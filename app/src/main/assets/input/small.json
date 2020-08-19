@@ -1,0 +1,49 @@
+{"json":
+[
+  {
+    "_id": "5f3d2bc42c7efb4554bd5b49",
+    "index": 0,
+    "guid": "9a6b6139-3f1c-4a92-bb02-fd2c71b826b5",
+    "isActive": true,
+    "balance": "$1,438.93",
+    "picture": "http://placehold.it/32x32",
+    "age": 21,
+    "eyeColor": "brown",
+    "name": "Sherrie Peterson",
+    "gender": "female",
+    "company": "VIOCULAR",
+    "email": "sherriepeterson@viocular.com",
+    "phone": "+1 (926) 589-2510",
+    "address": "685 Kathleen Court, Cornfields, Tennessee, 9838",
+    "about": "Cillum sunt deserunt ipsum sit irure sunt laborum. Reprehenderit ipsum consectetur deserunt esse labore aute mollit nostrud minim dolor elit laboris quis sunt. Non voluptate ea magna adipisicing cillum et. Sit aliquip quis esse laborum Lorem quis nisi aliquip veniam duis dolor labore anim non.\r\n",
+    "registered": "2015-10-14T02:47:46 -02:00",
+    "latitude": -71.238745,
+    "longitude": 78.829303,
+    "tags": [
+      "enim",
+      "ut",
+      "ad",
+      "quis",
+      "qui",
+      "id",
+      "dolore"
+    ],
+    "friends": [
+      {
+        "id": 0,
+        "name": "Alexander Horton"
+      },
+      {
+        "id": 1,
+        "name": "Barbra Dawson"
+      },
+      {
+        "id": 2,
+        "name": "Carroll Bauer"
+      }
+    ],
+    "greeting": "Hello, Sherrie Peterson! You have 10 unread messages.",
+    "favoriteFruit": "banana"
+  }
+]
+}
