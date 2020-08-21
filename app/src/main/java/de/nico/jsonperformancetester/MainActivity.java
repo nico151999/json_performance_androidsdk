@@ -125,7 +125,7 @@ public class MainActivity extends AppCompatActivity {
                 LambdaJsonBinder jsonBinder = new LambdaJsonBinder();
                 int iterations = 50;
                 String createdJson;
-                while (--iterations != 0) {
+                while (iterations-- != 0) {
                     for (String file : mFiles) {
                         Map<String, Object> jsonMap = mFileMaps.get(file);
                         long startTimestamp = System.nanoTime();
