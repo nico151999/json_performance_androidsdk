@@ -146,7 +146,7 @@ public class MainActivity extends AppCompatActivity {
                     encodeMethod.setAccessible(true);
                     int iterations = 50;
                     String createdJson;
-                    while (--iterations != 0) {
+                    while (iterations-- != 0) {
                         for (String file : mFiles) {
                             Map<String, Object> json = mFileMaps.get(file);
                             long startTimestamp = System.nanoTime();
