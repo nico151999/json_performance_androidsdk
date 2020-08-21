@@ -13,8 +13,8 @@ import android.util.Pair;
 import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-import android.widget.Toast;
 
+import com.amazonaws.mobileconnectors.lambdainvoker.LambdaJsonBinder;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import org.json.JSONArray;
@@ -35,7 +35,7 @@ public class MainActivity extends AppCompatActivity {
 
     private String[] mFiles;
     private Map<String, TextView> mViews;
-    private Map<String, String> mFileStrings;
+    private Map<String, Map<String, Object>> mFileMaps;
     private Map<String, List<Pair<Long, Long>>> mFileResults;
 
     private FloatingActionButton mFAB;
@@ -46,7 +46,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         mFAB = findViewById(R.id.floating_action_button);
 
-        mFileStrings = new HashMap<>();
+        mFileMaps = new HashMap<>();
         mViews = new HashMap<>();
         mFileResults = new HashMap<>();
 
@@ -65,7 +65,7 @@ public class MainActivity extends AppCompatActivity {
                 InputStream is = am.open(assetPrefix + "/" + file);
                 byte[] targetArray = new byte[is.available()];
                 is.read(targetArray);
-                mFileStrings.put(file, new String(targetArray));
+                mFileMaps.put(file, jsonObjectToMap(new JSONObject(new String(targetArray))));
 
                 mFileResults.put(file, new ArrayList<>());
 
@@ -85,7 +85,7 @@ public class MainActivity extends AppCompatActivity {
                 container.addView(valueView);
                 mViews.put(file, valueView);
             }
-        } catch (IOException e) {
+        } catch (IOException | JSONException e) {
             e.printStackTrace();
             Log.e(TAG, e.getMessage());
             finish();
@@ -108,13 +108,13 @@ public class MainActivity extends AppCompatActivity {
             int creationSum = 0;
             List<Pair<Long, Long>> measurements = mFileResults.get(file);
             for (Pair<Long, Long> measurement : measurements) {
-                parsingSum += measurement.first;
-                creationSum += measurement.second;
+                creationSum += measurement.first;
+                parsingSum += measurement.second;
             }
             int itemCount = measurements.size();
-            long parsingAverage = parsingSum / itemCount;
             long creationAverage = creationSum / itemCount;
-            view.setText(getString(R.string.parsing_creation, parsingAverage, creationAverage));
+            long parsingAverage = parsingSum / itemCount;
+            view.setText(getString(R.string.parsing_creation, creationAverage, parsingAverage));
         });
     }
 
@@ -122,39 +122,28 @@ public class MainActivity extends AppCompatActivity {
         new Thread() {
             @Override
             public void run() {
-                try {
-                    int iterations = 5;
-                    Map<String, Object> jsonMap;
-                    while (--iterations != 0) {
-                        for (String file : mFiles) {
-                            String json = mFileStrings.get(file);
-                            long startTimestamp = System.nanoTime();
-                            jsonMap = jsonObjectToMap(new JSONObject(json));
-                            long parsedTimestamp = System.nanoTime();
-                            new JSONObject(jsonMap).toString();
-                            long endTimestamp = System.nanoTime();
-                            long parsingTime = (parsedTimestamp - startTimestamp) / 1000;
-                            long creationTime = (endTimestamp - parsedTimestamp) / 1000;
-                            Log.i(TAG, String.format("Parsing %s took %sµs", file, parsingTime));
-                            Log.i(TAG, String.format("Creation %s took %sµs", file, creationTime));
-                            mFileResults.get(file).add(new Pair<>(parsingTime, creationTime));
-                        }
+                LambdaJsonBinder jsonBinder = new LambdaJsonBinder();
+                int iterations = 50;
+                String createdJson;
+                while (--iterations != 0) {
+                    for (String file : mFiles) {
+                        Map<String, Object> jsonMap = mFileMaps.get(file);
+                        long startTimestamp = System.nanoTime();
+                        createdJson = new String(jsonBinder.serialize(jsonMap));
+                        long createdTimestamp = System.nanoTime();
+                        jsonBinder.deserialize(createdJson.getBytes(), Map.class);
+                        long endTimestamp = System.nanoTime();
+                        long creationTime = (createdTimestamp - startTimestamp) / 1000;
+                        long parsingTime = (endTimestamp - createdTimestamp) / 1000;
+                        Log.i(TAG, String.format("Creating %s took %sµs", file, creationTime));
+                        Log.i(TAG, String.format("Parsing %s took %sµs", file, parsingTime));
+                        mFileResults.get(file).add(new Pair<>(creationTime, parsingTime));
                     }
-                    runOnUiThread(() -> {
-                        assignValuesToView();
-                        toggleFAB(true);
-                    });
-                } catch (JSONException e) {
-                    e.printStackTrace();
-                    runOnUiThread(() -> {
-                        Toast.makeText(
-                                MainActivity.this,
-                                R.string.json_error,
-                                Toast.LENGTH_LONG
-                        ).show();
-                        toggleFAB(true);
-                    });
                 }
+                runOnUiThread(() -> {
+                    assignValuesToView();
+                    toggleFAB(true);
+                });
             }
         }.start();
     }
