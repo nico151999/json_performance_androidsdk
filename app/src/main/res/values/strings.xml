@@ -2,6 +2,6 @@
     <string name="app_name">JSON Performance Tester</string>
     <string name="headline_text">%s file average:</string>
     <string name="waiting">Waiting…</string>
-    <string name="parsing_creation">Parsing: %1$dµs\nCreation: %2$dµs</string>
+    <string name="parsing_creation">Creation: %1$dµs\nParsing: %2$dµs</string>
     <string name="json_error">Performing a json operation an exception was thrown</string>
 </resources>

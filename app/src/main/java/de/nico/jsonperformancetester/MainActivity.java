@@ -16,6 +16,8 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.firebase.FirebaseApp;
+import com.google.firebase.functions.FirebaseFunctions;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -23,6 +25,9 @@ import org.json.JSONObject;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -35,7 +40,7 @@ public class MainActivity extends AppCompatActivity {
 
     private String[] mFiles;
     private Map<String, TextView> mViews;
-    private Map<String, String> mFileStrings;
+    private Map<String, Map<String, Object>> mFileMaps;
     private Map<String, List<Pair<Long, Long>>> mFileResults;
 
     private FloatingActionButton mFAB;
@@ -46,9 +51,11 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         mFAB = findViewById(R.id.floating_action_button);
 
-        mFileStrings = new HashMap<>();
+        mFileMaps = new HashMap<>();
         mViews = new HashMap<>();
         mFileResults = new HashMap<>();
+
+        FirebaseApp.initializeApp(MainActivity.this);
 
         AssetManager am = getApplicationContext().getAssets();
         try {
@@ -65,7 +72,7 @@ public class MainActivity extends AppCompatActivity {
                 InputStream is = am.open(assetPrefix + "/" + file);
                 byte[] targetArray = new byte[is.available()];
                 is.read(targetArray);
-                mFileStrings.put(file, new String(targetArray));
+                mFileMaps.put(file, jsonObjectToMap(new JSONObject(new String(targetArray))));
 
                 mFileResults.put(file, new ArrayList<>());
 
@@ -85,7 +92,7 @@ public class MainActivity extends AppCompatActivity {
                 container.addView(valueView);
                 mViews.put(file, valueView);
             }
-        } catch (IOException e) {
+        } catch (IOException | JSONException e) {
             e.printStackTrace();
             Log.e(TAG, e.getMessage());
             finish();
@@ -108,13 +115,19 @@ public class MainActivity extends AppCompatActivity {
             int creationSum = 0;
             List<Pair<Long, Long>> measurements = mFileResults.get(file);
             for (Pair<Long, Long> measurement : measurements) {
-                parsingSum += measurement.first;
-                creationSum += measurement.second;
+                creationSum += measurement.first;
+                parsingSum += measurement.second;
             }
             int itemCount = measurements.size();
             long parsingAverage = parsingSum / itemCount;
             long creationAverage = creationSum / itemCount;
-            view.setText(getString(R.string.parsing_creation, parsingAverage, creationAverage));
+            view.setText(
+                    getString(
+                            R.string.parsing_creation,
+                            creationAverage,
+                            parsingAverage
+                    )
+            );
         });
     }
 
@@ -123,28 +136,36 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void run() {
                 try {
-                    int iterations = 5;
-                    Map<String, Object> jsonMap;
+                    FirebaseFunctions functions = FirebaseFunctions.getInstance();
+                    Field serializerField = functions.getClass().getDeclaredField("serializer");
+                    serializerField.setAccessible(true);
+                    Object serializer = serializerField.get(functions);
+                    Method encodeMethod = serializer.getClass().getDeclaredMethod("encode", Object.class);
+                    encodeMethod.setAccessible(true);
+                    Method decodeMethod = serializer.getClass().getDeclaredMethod("decode", Object.class);
+                    encodeMethod.setAccessible(true);
+                    int iterations = 50;
+                    String createdJson;
                     while (--iterations != 0) {
                         for (String file : mFiles) {
-                            String json = mFileStrings.get(file);
+                            Map<String, Object> json = mFileMaps.get(file);
                             long startTimestamp = System.nanoTime();
-                            jsonMap = jsonObjectToMap(new JSONObject(json));
-                            long parsedTimestamp = System.nanoTime();
-                            new JSONObject(jsonMap).toString();
+                            createdJson = createJson(json, encodeMethod, serializer);
+                            long createdTimestamp = System.nanoTime();
+                            parseJson(createdJson, decodeMethod, serializer);
                             long endTimestamp = System.nanoTime();
-                            long parsingTime = (parsedTimestamp - startTimestamp) / 1000;
-                            long creationTime = (endTimestamp - parsedTimestamp) / 1000;
-                            Log.i(TAG, String.format("Parsing %s took %sµs", file, parsingTime));
+                            long creationTime = (createdTimestamp - startTimestamp) / 1000;
+                            long parsingTime = (endTimestamp - createdTimestamp) / 1000;
                             Log.i(TAG, String.format("Creation %s took %sµs", file, creationTime));
-                            mFileResults.get(file).add(new Pair<>(parsingTime, creationTime));
+                            Log.i(TAG, String.format("Parsing %s took %sµs", file, parsingTime));
+                            mFileResults.get(file).add(new Pair<>(creationTime, parsingTime));
                         }
                     }
                     runOnUiThread(() -> {
                         assignValuesToView();
                         toggleFAB(true);
                     });
-                } catch (JSONException e) {
+                } catch (Exception e) {
                     e.printStackTrace();
                     runOnUiThread(() -> {
                         Toast.makeText(
@@ -157,6 +178,35 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         }.start();
+    }
+
+    private String createJson(Object parsedJson, Method encodeMethod, Object serializer) throws InvocationTargetException, IllegalAccessException {
+        Map<String, Object> body = new HashMap<>();
+        Object encoded = encodeMethod.invoke(serializer, parsedJson);
+        body.put("data", encoded);
+        JSONObject bodyJSON = new JSONObject(body);
+        return bodyJSON.toString();
+    }
+
+    private Map<String, Object> parseJson(String json, Method decodeMethod, Object serializer) throws JSONException, InvocationTargetException, IllegalAccessException {
+        JSONObject bodyJSON;
+        bodyJSON = new JSONObject(json);
+
+        Object dataJSON = bodyJSON.opt("data");
+        if (dataJSON == null) {
+            dataJSON = bodyJSON.opt("result");
+        }
+
+        if (dataJSON == null) {
+            throw new JSONException("Json has incompatible format");
+        } else {
+            Object decoded = decodeMethod.invoke(serializer, dataJSON);
+            if (decoded instanceof Map) {
+                return (Map<String, Object>) decoded;
+            } else {
+                throw new JSONException("Json has to have a format that can be converted to a Map");
+            }
+        }
     }
 
     private Map<String, Object> jsonObjectToMap(JSONObject object) throws JSONException {
