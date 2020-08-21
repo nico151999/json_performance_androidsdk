@@ -125,7 +125,7 @@ public class MainActivity extends AppCompatActivity {
                 try {
                     int iterations = 5;
                     Map<String, Object> jsonMap;
-                    while (--iterations != 0) {
+                    while (iterations-- != 0) {
                         for (String file : mFiles) {
                             String json = mFileStrings.get(file);
                             long startTimestamp = System.nanoTime();
