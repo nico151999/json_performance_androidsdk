@@ -156,7 +156,7 @@ public class MainActivity extends AppCompatActivity {
                             long endTimestamp = System.nanoTime();
                             long creationTime = (createdTimestamp - startTimestamp) / 1000;
                             long parsingTime = (endTimestamp - createdTimestamp) / 1000;
-                            Log.i(TAG, String.format("Creation %s took %sµs", file, creationTime));
+                            Log.i(TAG, String.format("Creating %s took %sµs", file, creationTime));
                             Log.i(TAG, String.format("Parsing %s took %sµs", file, parsingTime));
                             mFileResults.get(file).add(new Pair<>(creationTime, parsingTime));
                         }
