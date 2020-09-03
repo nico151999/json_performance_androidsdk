@@ -3,6 +3,7 @@ package de.nico.jsonperformancetester;
 import androidx.annotation.UiThread;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
+import de.nico.jni_json.NativeJSON;
 
 import android.content.res.AssetManager;
 import android.content.res.ColorStateList;
@@ -13,19 +14,14 @@ import android.util.Pair;
 import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -122,16 +118,15 @@ public class MainActivity extends AppCompatActivity {
         new Thread() {
             @Override
             public void run() {
-                try {
-                    int iterations = 5;
+                    int iterations = 1;
                     Map<String, Object> jsonMap;
                     while (iterations-- != 0) {
                         for (String file : mFiles) {
                             String json = mFileStrings.get(file);
                             long startTimestamp = System.nanoTime();
-                            jsonMap = jsonObjectToMap(new JSONObject(json));
+                            jsonMap = NativeJSON.decode(json, Map.class);
                             long parsedTimestamp = System.nanoTime();
-                            new JSONObject(jsonMap).toString();
+                            NativeJSON.encode(jsonMap);
                             long endTimestamp = System.nanoTime();
                             long parsingTime = (parsedTimestamp - startTimestamp) / 1000;
                             long creationTime = (endTimestamp - parsedTimestamp) / 1000;
@@ -144,48 +139,8 @@ public class MainActivity extends AppCompatActivity {
                         assignValuesToView();
                         toggleFAB(true);
                     });
-                } catch (JSONException e) {
-                    e.printStackTrace();
-                    runOnUiThread(() -> {
-                        Toast.makeText(
-                                MainActivity.this,
-                                R.string.json_error,
-                                Toast.LENGTH_LONG
-                        ).show();
-                        toggleFAB(true);
-                    });
-                }
             }
         }.start();
-    }
-
-    private Map<String, Object> jsonObjectToMap(JSONObject object) throws JSONException {
-        Map<String, Object> map = new HashMap<>();
-        for (Iterator<String> keys = object.keys(); keys.hasNext(); ) {
-            String key = keys.next();
-            Object value = object.get(key);
-            if (value instanceof JSONArray) {
-                value = jsonArrayToList((JSONArray) value);
-            } else if (value instanceof JSONObject) {
-                value = jsonObjectToMap((JSONObject) value);
-            }
-            map.put(key, value);
-        }
-        return map;
-    }
-
-    private List<Object> jsonArrayToList(JSONArray array) throws JSONException {
-        List<Object> list = new ArrayList<>();
-        for(int i = 0; i < array.length(); i++) {
-            Object value = array.get(i);
-            if(value instanceof JSONArray) {
-                value = jsonArrayToList((JSONArray) value);
-            } else if(value instanceof JSONObject) {
-                value = jsonObjectToMap((JSONObject) value);
-            }
-            list.add(value);
-        }
-        return list;
     }
 
     @UiThread
