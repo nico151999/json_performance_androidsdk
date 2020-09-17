@@ -118,7 +118,7 @@ public class MainActivity extends AppCompatActivity {
         new Thread() {
             @Override
             public void run() {
-                    int iterations = 1;
+                    int iterations = 50;
                     Map<String, Object> jsonMap;
                     while (iterations-- != 0) {
                         for (String file : mFiles) {
@@ -131,7 +131,7 @@ public class MainActivity extends AppCompatActivity {
                             long parsingTime = (parsedTimestamp - startTimestamp) / 1000;
                             long creationTime = (endTimestamp - parsedTimestamp) / 1000;
                             Log.i(TAG, String.format("Parsing %s took %sµs", file, parsingTime));
-                            Log.i(TAG, String.format("Creation %s took %sµs", file, creationTime));
+                            Log.i(TAG, String.format("Creating %s took %sµs", file, creationTime));
                             mFileResults.get(file).add(new Pair<>(parsingTime, creationTime));
                         }
                     }
