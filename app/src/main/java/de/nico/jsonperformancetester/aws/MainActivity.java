@@ -1,4 +1,4 @@
-package de.nico.jsonperformancetester;
+package de.nico.jsonperformancetester.aws;
 
 import androidx.annotation.UiThread;
 import androidx.appcompat.app.AppCompatActivity;
@@ -123,7 +123,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void run() {
                 LambdaJsonBinder jsonBinder = new LambdaJsonBinder();
-                int iterations = 50;
+                int iterations = 10;
                 String createdJson;
                 while (iterations-- != 0) {
                     for (String file : mFiles) {
