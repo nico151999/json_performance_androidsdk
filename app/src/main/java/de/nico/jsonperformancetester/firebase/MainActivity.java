@@ -1,4 +1,4 @@
-package de.nico.jsonperformancetester;
+package de.nico.jsonperformancetester.firebase;
 
 import androidx.annotation.UiThread;
 import androidx.appcompat.app.AppCompatActivity;
@@ -144,7 +144,7 @@ public class MainActivity extends AppCompatActivity {
                     encodeMethod.setAccessible(true);
                     Method decodeMethod = serializer.getClass().getDeclaredMethod("decode", Object.class);
                     encodeMethod.setAccessible(true);
-                    int iterations = 50;
+                    int iterations = 10;
                     String createdJson;
                     while (iterations-- != 0) {
                         for (String file : mFiles) {
